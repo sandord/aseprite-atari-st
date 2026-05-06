@@ -1,22 +1,24 @@
 --[[
-  Atari ST Palette Editor for Aseprite
+  Atari ST/STE Palette Editor for Aseprite
   =====================================
   Edit the first 16 colors of the current sprite's palette using
-  Atari ST-style 3-bit RGB sliders (0-7 per channel).
+  Atari ST/STE-style RGB sliders (0-7/0-15 values per channel).
 
-  The Atari ST 512-color mode uses 3 bits per channel (R:3 G:3 B:3),
-  producing 512 possible colors. This plugin maps those values to
-  the full Aseprite 8-bit palette (0-255 per channel).
+  The Atari ST has 512 colors with 3 bits per channel (R:3 G:3 B:3).
+  The Atari ST has 4096 colors with 4 bits per channel (R:4 G:4 B:4).
+  
+  This plugin maps those values to the full Aseprite 8-bit palette
+  (0-255 per channel).
 
   Features:
     - 4×4 color swatch grid — click a swatch to select it and open
       the Aseprite color picker, or use the R/G/B sliders
-    - Single shared R, G, B sliders (0-7) that edit the selected slot
+    - Single shared R, G, B sliders that edit the selected slot
     - Real-time palette preview as sliders are dragged
     - "Skip first" mode: map slots to palette indices 1-16
     - "Stretch" mode: full-range 8-bit conversion vs simple shift
     - STE mode: switch to 4-bit-per-channel (0-15, 4096 colors)
-    - 3-bit hex display for the selected slot (e.g., "777" = full white)
+    - 3/4-bit hex display for the selected slot (e.g., "777" = full white)
 ]]
 
 -- ================================================================
@@ -230,7 +232,7 @@ end
 -- Build Dialog
 -- ================================================================
 
-local dlg = Dialog("Atari ST Palette Editor")
+local dlg = Dialog("Atari ST/STE Palette Editor")
 
 -- Skip first checkbox
 dlg:check{
