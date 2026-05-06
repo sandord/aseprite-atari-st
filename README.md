@@ -1,4 +1,4 @@
-# Atari ST Palette Editor
+# Aseprite Atari ST Palette Editor Plugin
 
 An [Aseprite](https://www.aseprite.org/) plugin for editing sprite palettes using the Atari ST's 3-bit-per-channel RGB color model.
 
