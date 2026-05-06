@@ -1,6 +1,6 @@
 # Aseprite Atari ST Palette Editor Plugin
 
-An [Aseprite](https://www.aseprite.org/) plugin for editing sprite palettes using the Atari ST's 3-bit-per-channel RGB color model.
+An [Aseprite](https://www.aseprite.org/) plugin for editing sprite palettes using the Atari ST's 3-bit-per-channel (or Atari STE's 4-bit-per-channel) RGB color model.
 
 | | |
 |---|---|
@@ -12,7 +12,7 @@ An [Aseprite](https://www.aseprite.org/) plugin for editing sprite palettes usin
 
 ## Why?
 
-Because editing Atari ST palettes in Aseprite can be cumbersome without a dedicated tool. Because Aseprite uses 8 bits per channel (0–255) while the Atari ST's palette hardware uses only 3 bits per channel (0–7), it can be hard to know if the ST can display a given color.
+Because editing Atari ST(E) palettes in Aseprite can be cumbersome without a dedicated tool. Because Aseprite uses 8 bits per channel (0–255) while the Atari ST's palette hardware uses only 3 bits per channel (0–7), it can be hard to know if the ST can display a given color.
 
 ## Screenshot
 
