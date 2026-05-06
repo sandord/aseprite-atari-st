@@ -10,6 +10,10 @@ An [Aseprite](https://www.aseprite.org/) plugin for editing sprite palettes usin
 | **License** | MIT |
 | **AI Assisted** | Yes — code generated with AI help |
 
+## Screenshot
+
+![Atari ST Palette Editor screenshot](screenshot.png)
+
 ## Installation
 
 1. Open Aseprite
