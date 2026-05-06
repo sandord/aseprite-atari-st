@@ -5,7 +5,7 @@ An [Aseprite](https://www.aseprite.org/) plugin for editing sprite palettes usin
 | | |
 |---|---|
 | **Plugin** | Atari ST Palette Editor |
-| **Version** | 1.0 |
+| **Version** | Beta 1 |
 | **Author** | [sandord](https://github.com/sandord) |
 | **License** | MIT |
 | **AI Assisted** | Yes — code generated with AI help |
