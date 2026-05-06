@@ -5,7 +5,7 @@ An [Aseprite](https://www.aseprite.org/) plugin for editing sprite palettes usin
 | | |
 |---|---|
 | **Plugin** | Atari ST Palette Editor |
-| **Version** | Beta 1 |
+| **Version** | Beta 2 |
 | **Author** | [sandord](https://github.com/sandord) |
 | **License** | MIT |
 | **AI Assisted** | Yes — code generated with AI help |
@@ -56,7 +56,7 @@ Stretch mode fills the entire 0–255 range, which is generally preferred for mo
 
 ## Requirements
 
-- **Aseprite v1.3** or later (the Lua scripting API and `Dialog` class were stabilized in this release)
+- **Aseprite v1.3** or later
 
 ## License
 

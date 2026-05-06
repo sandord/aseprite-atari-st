@@ -15,8 +15,17 @@
     - Real-time palette preview as sliders are dragged
     - "Skip first" mode: map slots to palette indices 1-16
     - "Stretch" mode: full-range 8-bit conversion vs simple shift
+    - STE mode: switch to 4-bit-per-channel (0-15, 4096 colors)
     - 3-bit hex display for the selected slot (e.g., "777" = full white)
 ]]
+
+-- ================================================================
+-- API Version Guard
+-- ================================================================
+
+if app.apiVersion < 21 then
+  return app.alert("This script requires Aseprite v1.3 or later")
+end
 
 -- ================================================================
 -- State
@@ -25,6 +34,7 @@
 local selectedSlot = 0
 local stretchEnabled = true
 local skipFirstEnabled = false
+local steEnabled = false
 local updating = false
 
 -- Per-slot 3-bit color values (source of truth for display)
@@ -43,12 +53,17 @@ local slotColors3bit = {}
 --- @param v integer 0-7
 --- @return integer 0-255
 local function bit3to8(v, stretch)
+  if steEnabled then
+    -- 4-bit (STE): 0-15 → 0-255
+    if stretch then
+      return (v << 4) | v  -- replicate nibble: 15 → 255
+    end
+    return v << 4  -- 15 → 240
+  end
+  -- 3-bit (ST): 0-7 → 0-255
   if stretch then
-    -- Full-range stretch: replicate 3 bits across 8 bits
-    -- 7 (111b) -> (11100000) | (00011100) | (00000011) = 11111111 = 255
     return (v << 5) | (v << 2) | (v >> 1)
   end
-  -- Simple shift: 7 (111b) -> 11100000 = 224
   return v << 5
 end
 
@@ -57,6 +72,9 @@ end
 --- @param v integer 0-255
 --- @return integer 0-7
 local function bit8to3(v)
+  if steEnabled then
+    return math.floor(v * 15 / 255 + 0.5)
+  end
   return math.floor(v * 7 / 255 + 0.5)
 end
 
@@ -101,42 +119,41 @@ local function initSlotColors(pal)
 end
 
 -- ================================================================
--- Dialog Update Functions
+-- Canvas Geometry
 -- ================================================================
 
---- Read all 16 palette entries and update the button labels.
---- Does NOT write to the palette. Missing entries default to black.
---- @param dlg Dialog
---- @param pal Palette
-local function refreshButtons(dlg, pal)
-  for slot = 0, 15 do
-    local idx = slotToIndex(slot)
-    local c = slotColors3bit[slot]
-    if c then
-      dlg:modify{ id = "b" .. slot, text = string.format("%2d: %s", idx, rgb3hex(c.r, c.g, c.b)) }
-    else
-      dlg:modify{ id = "b" .. slot, text = string.format("%2d: $000", idx) }
-    end
-  end
+local CANVAS_W = 252
+local CANVAS_H = 188
+local SWATCH_W = 60
+local SWATCH_H = 44
+local SWATCH_GAP = 4
+-- Helper: rectangle for a palette slot in the swatch grid
+local function slotRect(slot)
+  local col = slot % 4
+  local row = math.floor(slot / 4)
+  return Rectangle(
+    col * (SWATCH_W + SWATCH_GAP),
+    row * (SWATCH_H + SWATCH_GAP),
+    SWATCH_W, SWATCH_H
+  )
 end
 
---- Read all 16 palette entries and update the visual shades strip.
---- Pure display — no interaction. Does NOT write to the palette.
---- @param dlg Dialog
---- @param pal Palette
-local function refreshShadesDisplay(dlg, pal)
-  local colors = {}
+-- Helper: find which slot contains a point (canvas coords)
+local function slotAtPoint(x, y)
   for slot = 0, 15 do
-    local idx = slotToIndex(slot)
-    local color = pal:getColor(idx)
-    if color then
-      colors[slot + 1] = Color{ r = color.red, g = color.green, b = color.blue, a = 255 }
-    else
-      colors[slot + 1] = Color{ r = 0, g = 0, b = 0, a = 255 }
+    if slotRect(slot):contains(Point(x, y)) then
+      return slot
     end
   end
-  dlg:modify{ id = "colorPreviews", colors = colors }
+  return nil
 end
+
+-- Canvas mouse state
+local hoveredSlot = nil
+
+-- ================================================================
+-- Dialog Update Functions
+-- ================================================================
 
 --- Read the selected slot's palette color, convert to 3-bit, and
 --- update the sliders and selected label. Does NOT write to palette.
@@ -153,6 +170,7 @@ local function refreshSliders(dlg, pal)
   dlg:modify{ id = "s_r", value = r3 }
   dlg:modify{ id = "s_g", value = g3 }
   dlg:modify{ id = "s_b", value = b3 }
+
   dlg:modify{ id = "selLabel", text = string.format("Selected: %2d: %s", idx, rgb3hex(r3, g3, b3)) }
 end
 
@@ -176,9 +194,7 @@ local function writeSelectedSlot(dlg, pal)
 
   pal:setColor(idx, Color{ r = r8, g = g8, b = b8, a = 255 })
 
-  -- Refresh all displays
-  refreshButtons(dlg, pal)
-  refreshShadesDisplay(dlg, pal)
+  dlg:repaint()
 
   -- Update the selected label
   dlg:modify{ id = "selLabel", text = string.format("Selected: %2d: %s", idx, rgb3hex(r3, g3, b3)) }
@@ -222,11 +238,13 @@ dlg:check{
   text = "Skip palette index 0 (show indices 1–16)",
   selected = skipFirstEnabled,
   onclick = function()
+    if updating then return end
+    updating = true
     skipFirstEnabled = dlg.data.skipFirst
     initSlotColors(pal)      -- re-read all slots from palette with new mapping
-    refreshButtons(dlg, pal)
-    refreshShadesDisplay(dlg, pal)
+    dlg:repaint()
     refreshSliders(dlg, pal)
+    updating = false
   end
 }
 
@@ -235,7 +253,7 @@ dlg:newrow()
 -- Stretch checkbox (default: checked = full-range)
 dlg:check{
   id = "stretch",
-  text = "Stretch 3-bit colors to full 8-bit range",
+  text = "Stretch colors to full 8-bit range",
   selected = stretchEnabled,
   onclick = function()
     stretchEnabled = dlg.data.stretch
@@ -253,39 +271,152 @@ dlg:check{
         })
       end
     end
-    refreshButtons(dlg, pal)
-    refreshShadesDisplay(dlg, pal)
+    dlg:repaint()
     refreshSliders(dlg, pal)
+    updating = false
+  end
+}
+
+dlg:newrow()
+
+-- STE mode checkbox
+dlg:check{
+  id = "ste",
+  text = "STE palette (4-bit primaries, 0-15 per channel)",
+  selected = steEnabled,
+  onclick = function()
+    steEnabled = dlg.data.ste
+    if updating then return end
+    updating = true
+    -- Re-read palette at new bit depth (handles clamping)
+    initSlotColors(pal)
+    -- Update slider max values
+    local newMax = steEnabled and 15 or 7
+    dlg:modify{ id = "s_r", max = newMax }
+    dlg:modify{ id = "s_g", max = newMax }
+    dlg:modify{ id = "s_b", max = newMax }
+    -- Refresh display
+    refreshSliders(dlg, pal)
+    dlg:repaint()
     updating = false
   end
 }
 
 dlg:separator{ text = "Palette" }
 
--- Visual color preview strip (read-only, no interaction)
-dlg:shades{
-  id = "colorPreviews",
-  colors = {}
-}
+-- --- Canvas callbacks (defined here to capture dlg, pal) ---
 
--- 4×4 grid of selection buttons, each showing index and 3-bit hex
-for row = 0, 3 do
-  for col = 0, 3 do
-    local currentSlot = row * 4 + col
-    dlg:button{
-      id = "b" .. currentSlot,
-      text = string.format("%2d: $000", slotToIndex(currentSlot)),
-      onclick = function()
-        if updating then return end
+
+-- Detect palette changes (e.g., from undo) and re-sync slotColors3bit
+local function ensureSynced()
+  for slot = 0, 15 do
+    local idx = slotToIndex(slot)
+    local color = pal:getColor(idx)
+    if color then
+      local r3 = bit8to3(color.red)
+      local g3 = bit8to3(color.green)
+      local b3 = bit8to3(color.blue)
+      local c = slotColors3bit[slot]
+      if not c or c.r ~= r3 or c.g ~= g3 or c.b ~= b3 then
+        -- Mismatch detected: re-sync from palette
         updating = true
-        selectedSlot = currentSlot
+        initSlotColors(pal)
         refreshSliders(dlg, pal)
+        dlg:repaint()
         updating = false
+        return
       end
-    }
+    end
   end
-  dlg:newrow()
 end
+
+local function canvasOnPaint(ev)
+  local gc = ev.context
+  gc.antialias = false
+
+  -- --- 4x4 swatch grid ---
+  for slot = 0, 15 do
+    local r = slotRect(slot)
+    local c = slotColors3bit[slot] or { r = 0, g = 0, b = 0 }
+    local cr = bit3to8(c.r, stretchEnabled)
+    local cg = bit3to8(c.g, stretchEnabled)
+    local cb = bit3to8(c.b, stretchEnabled)
+
+    -- Fill swatch with color
+    gc.color = Color{ r = cr, g = cg, b = cb, a = 255 }
+    gc:fillRect(r)
+
+    -- Border: yellow for selected, lighter for hovered, dark for normal
+    if slot == selectedSlot then
+      gc.color = Color{ r = 255, g = 200, b = 0, a = 255 }
+      gc.strokeWidth = 2
+    elseif slot == hoveredSlot then
+      gc.color = Color{ r = 180, g = 180, b = 180, a = 255 }
+      gc.strokeWidth = 1
+    else
+      gc.color = Color{ r = 60, g = 60, b = 60, a = 255 }
+      gc.strokeWidth = 1
+    end
+    gc:strokeRect(r)
+
+    -- Determine text color based on background brightness
+    local brightness = (cr * 299 + cg * 587 + cb * 114) / 1000
+    local textColor, dimTextColor
+    if brightness > 150 then
+      textColor = Color{ r = 0, g = 0, b = 0, a = 255 }
+      dimTextColor = Color{ r = 0, g = 0, b = 0, a = 140 }
+    else
+      textColor = Color{ r = 255, g = 255, b = 255, a = 255 }
+      dimTextColor = Color{ r = 255, g = 255, b = 255, a = 140 }
+    end
+
+    -- Palette index in top-left corner (subtle)
+    local idxText = tostring(slotToIndex(slot))
+    gc.color = dimTextColor
+    gc:fillText(idxText, r.x + 3, r.y + 12)
+
+    -- Hex color code centered
+    local hexText = rgb3hex(c.r, c.g, c.b)
+    local size = gc:measureText(hexText)
+    gc.color = textColor
+    gc:fillText(hexText,
+      r.x + (r.w - size.width) / 2,
+      r.y + (r.h - size.height) / 2)
+  end
+end
+
+local function canvasOnMouseMove(ev)
+  ensureSynced()
+  local newHover = slotAtPoint(ev.x, ev.y)
+  if newHover ~= hoveredSlot then
+    hoveredSlot = newHover
+    dlg:repaint()
+  end
+end
+
+local function canvasOnMouseUp(ev)
+  if updating then return end
+  ensureSynced()
+  local slot = slotAtPoint(ev.x, ev.y)
+  if slot then
+    updating = true
+    selectedSlot = slot
+    refreshSliders(dlg, pal)
+    dlg:repaint()
+    updating = false
+  end
+end
+
+-- Custom canvas: preview strip + 4x4 swatch grid
+dlg:canvas{
+  id = "paletteCanvas",
+  width = CANVAS_W,
+  height = CANVAS_H,
+  autoscaling = false,
+  onpaint = canvasOnPaint,
+  onmousemove = canvasOnMouseMove,
+  onmouseup = canvasOnMouseUp
+}
 
 dlg:separator{}
 
@@ -294,6 +425,7 @@ dlg:label{
   id = "selLabel",
   text = "Selected:  0: 000"
 }
+
 
 -- Shared R, G, B sliders (0-7) for the selected slot
 local function sliderChanged()
@@ -350,9 +482,17 @@ dlg:button{
 
 -- Populate all controls from the current palette state
 initSlotColors(pal)
-refreshButtons(dlg, pal)
-refreshShadesDisplay(dlg, pal)
 refreshSliders(dlg, pal)
 
 -- Show the dialog non-modally (allows undo and other interactions while open)
 dlg:show{ wait = false }
+
+-- Listen for document changes (e.g., undo/redo) to keep dialog in sync
+local function onPaletteChange()
+  ensureSynced()
+end
+pcall(function() app.events:on('change', onPaletteChange) end)
+pcall(function() sprite.events:on('change', onPaletteChange) end)
+
+-- Repaint after show so the canvas surface is ready
+dlg:repaint()
