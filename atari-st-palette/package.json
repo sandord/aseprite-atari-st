@@ -1,0 +1,20 @@
+{
+  "name": "atari-st-palette",
+  "displayName": "Atari ST Palette Editor",
+  "description": "Edit the first 16 colors of the palette using 3-bit RGB values (Atari ST 512-color mode)",
+  "version": "1.0",
+  "author": { "name": "Sandor Drieënhuizen" },
+  "contributors": [],
+  "publisher": "",
+  "license": "MIT",
+  "categories": ["Palettes"],
+  "contributes": {
+    "scripts": [
+      {
+        "path": "./atari-st-palette.lua",
+        "title": "Atari ST Palette Editor",
+        "shortcut": "Ctrl+Shift+P"
+      }
+    ]
+  }
+}
