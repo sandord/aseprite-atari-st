@@ -354,5 +354,5 @@ refreshButtons(dlg, pal)
 refreshShadesDisplay(dlg, pal)
 refreshSliders(dlg, pal)
 
--- Show the dialog modally (blocks script execution until closed)
-dlg:show{ wait = true }
+-- Show the dialog non-modally (allows undo and other interactions while open)
+dlg:show{ wait = false }

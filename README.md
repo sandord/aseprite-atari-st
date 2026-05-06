@@ -10,6 +10,10 @@ An [Aseprite](https://www.aseprite.org/) plugin for editing sprite palettes usin
 | **License** | MIT |
 | **AI Assisted** | Yes — code generated with AI help |
 
+## Why?
+
+Because editing Atari ST palettes in Aseprite can be cumbersome without a dedicated tool. Because Aseprite uses 8 bits per channel (0–255) while the Atari ST's palette hardware uses only 3 bits per channel (0–7), it can be hard to know if the ST can display a given color.
+
 ## Screenshot
 
 ![Atari ST Palette Editor screenshot](screenshot.png)
