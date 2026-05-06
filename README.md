@@ -28,6 +28,11 @@ An [Aseprite](https://www.aseprite.org/) plugin for editing sprite palettes usin
 
 All changes are written to the active sprite's palette immediately. The dialog is modal — close it when you are done.
 
+## Limitations
+
+Due to limitations of the Aseprite scripting API, this plugin has user interface constraints:
+- The color preview strip cannot be used to select a color. Use the corresponding buttons instead.
+
 ## About Atari ST Colors
 
 The Atari ST's color hardware uses **9 bits of color information** — 3 bits each for red, green, and blue — for a total of **512 possible colors** (8×8×8). Each channel ranges from 0 to 7. The machine's palette registers store 9-bit color values and output them to the screen through three 3-bit DACs.
